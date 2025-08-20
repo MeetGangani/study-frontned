@@ -1,0 +1,137 @@
+@import '@mantine/core/styles.css';
+@import '@mantine/notifications/styles.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 220 15% 9%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 15% 9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 15% 9%;
+    --primary: 170 60% 35%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 215 25% 95%;
+    --secondary-foreground: 220 15% 12%;
+    --muted: 215 20% 96%;
+    --muted-foreground: 220 9% 48%;
+    --accent: 12 85% 65%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 215 20% 89%;
+    --input: 215 20% 89%;
+    --ring: 170 60% 35%;
+    --radius: 0.875rem;
+    --chart-1: 170 60% 35%;
+    --chart-2: 12 85% 65%;
+    --chart-3: 45 90% 60%;
+    --chart-4: 200 85% 45%;
+    --chart-5: 280 65% 55%;
+    --scrollbar: 170 60% 35%;
+  }
+
+  .dark {
+    --background: 220 15% 9%;
+    --foreground: 0 0% 98%;
+    --card: 220 13% 12%;
+    --card-foreground: 0 0% 98%;
+    --popover: 220 13% 12%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 170 55% 45%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 220 10% 17%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 220 8% 19%;
+    --muted-foreground: 220 5% 66%;
+    --accent: 12 80% 62%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 8% 19%;
+    --input: 220 8% 19%;
+    --ring: 170 55% 45%;
+    --chart-1: 170 55% 45%;
+    --chart-2: 12 80% 62%;
+    --chart-3: 45 85% 65%;
+    --chart-4: 200 80% 55%;
+    --chart-5: 280 60% 65%;
+    --scrollbar: 170 55% 45%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+html {
+  overflow: auto;
+}
+
+/* Webkit browsers (Chrome, Safari, etc.) */
+::-webkit-scrollbar {
+  width: 0px;
+  height: 0px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Hide scrollbar when not scrolling */
+::-webkit-scrollbar-thumb {
+  visibility: hidden;
+}
+
+body:hover::-webkit-scrollbar-thumb {
+  visibility: visible;
+}
+
+/* Custom styles for short scrollbar */
+body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* Short scrollbar styles */
+body::-webkit-scrollbar-thumb {
+  height: 50px;
+}
+
+body:hover::-webkit-scrollbar-thumb {
+  visibility: visible;
+}
+
+/* Ensure the scrollbar is always on the right side */
+body {
+  overflow-y: overlay;
+}
+
+/* Remove custom cursor styles */
+* {
+  /* cursor: none !important; */
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
