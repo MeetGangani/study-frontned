@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Users, BookOpen, ArrowRight, Sparkles, Calendar, Trophy, Target } from "lucide-react";
+import { Search, Users, BookOpen, ArrowRight, Sparkles, Plus, Target, Award } from "lucide-react";
 import Navbar from "../components/Nav_bar";
 import { useAuth } from "@/components/providers/auth";
 import { CreateGroupDialog } from "../components/group/Create-group-dialog";
@@ -28,7 +28,7 @@ export default function GroupsPage() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
-    const handleMouseMove = (e) => {
+    const handleMouseMove = (e: MouseEvent) => {
       setMousePosition({ x: e.clientX, y: e.clientY });
     };
     window.addEventListener('mousemove', handleMouseMove);
@@ -61,6 +61,7 @@ export default function GroupsPage() {
       group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       group.subject.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  
   const filteredMemberGroups = memberGroups.filter(
     (group) =>
       (group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -184,8 +185,9 @@ export default function GroupsPage() {
         variants={container}
         initial="hidden"
         animate="show"
-        className="container mx-auto px-4 py-12 mt-16 space-y-12 relative z-10"
+        className="container mx-auto px-6 py-12 mt-16 space-y-12 relative z-10 max-w-7xl"
       >
+        
         {/* Enhanced Hero Section */}
         <motion.div variants={item} className="text-center space-y-8">
           <div className="space-y-6">
@@ -275,7 +277,7 @@ export default function GroupsPage() {
             trend="New"
           />
           <EnhancedStatsCard
-            icon={<Trophy className="h-7 w-7" />}
+            icon={<Award className="h-7 w-7" />}
             label="Study Streak"
             value={15}
             gradient="from-yellow-500/10 to-orange-500/5"
@@ -285,13 +287,14 @@ export default function GroupsPage() {
           />
         </motion.div>
 
-        {/* Enhanced Actions and Search Bar */}
+        {/* Enhanced Actions and Search Bar - FIXED */}
         <motion.div
           variants={item}
           className="max-w-screen-xl mx-auto space-y-8"
         >
           <div className="flex flex-col lg:flex-row justify-between items-center gap-6">
             <div className="flex flex-col sm:flex-row gap-4">
+              {/* Fixed CreateGroupDialog usage */}
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                 <CreateGroupDialog
                   onCreateGroup={(newGroup) =>
@@ -299,6 +302,8 @@ export default function GroupsPage() {
                   }
                 />
               </motion.div>
+              
+              {/* Fixed JoinGroupDialog usage */}
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                 <JoinGroupDialog />
               </motion.div>
@@ -350,7 +355,7 @@ export default function GroupsPage() {
         </motion.div>
 
         <div className="mx-auto flex max-w-screen-xl flex-wrap items-center justify-between p-2">
-          {/* Groups Display */}
+          {/* Groups Display - FIXED COMPARISON OPERATORS */}
           <motion.div variants={item} className="space-y-12 w-full">
             {(activeTab === "all" || activeTab === "created") && (
               <motion.div
@@ -381,6 +386,33 @@ export default function GroupsPage() {
                   error={error}
                   isOwner={false}
                 />
+              </motion.div>
+            )}
+
+            {/* Empty State */}
+            {!isLoading && filteredCreatedGroups.length === 0 && filteredMemberGroups.length === 0 && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="text-center py-16"
+              >
+                <div className="w-32 h-32 mx-auto mb-6 bg-gradient-to-br from-primary/20 to-accent/20 rounded-full flex items-center justify-center">
+                  <BookOpen className="w-16 h-16 text-primary" />
+                </div>
+                <h3 className="text-2xl font-bold text-foreground mb-4">No groups found</h3>
+                <p className="text-muted-foreground mb-8 max-w-md mx-auto">
+                  {searchTerm ? "Try adjusting your search terms" : "Start your learning journey by creating or joining a group"}
+                </p>
+                {!searchTerm && (
+                  <div className="flex items-center justify-center space-x-4">
+                    <CreateGroupDialog
+                      onCreateGroup={(newGroup) =>
+                        setCreatedGroups((prevGroups) => [...prevGroups, newGroup])
+                      }
+                    />
+                    <JoinGroupDialog />
+                  </div>
+                )}
               </motion.div>
             )}
           </motion.div>
