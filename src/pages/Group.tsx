@@ -95,12 +95,7 @@ export default function GroupsPage() {
           <h2 className="text-3xl font-bold mb-4 bg-gradient-to-r from-primary via-primary/80 to-primary/60 bg-clip-text text-transparent">
             BrainHub
           </h2>
-          <p className="text-muted-foreground text-lg mb-2">
-            Intelligent Learning Network
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Please sign in to access your study groups
-          </p>
+
         </MotionCard>
       </motion.div>
     );

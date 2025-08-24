@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Moon, Sun } from "lucide-react";
 
-const MinimalistClock = () => {
+const CompactMinimalistClock = () => {
   const [time, setTime] = useState(new Date());
   const [quote, setQuote] = useState("");
 
@@ -26,7 +26,7 @@ const MinimalistClock = () => {
     "The clock keeps ticking, keep moving 🔄",
     "Dream big, act now 🚀",
     "Moments become milestones 🌈",
-    "Time is precious, don’t waste it 🕰️",
+    "Time is precious, don't waste it 🕰️",
     "One second can change everything 💡",
     "Every effort adds up over time 📊",
     "Keep learning, keep growing 🌍",
@@ -48,7 +48,7 @@ const MinimalistClock = () => {
     "Time used wisely leads to greatness 🌟",
     "The right time is always now 🚀",
     "Don't just pass time, make it count 🎯",
-    "Today’s learning is tomorrow’s success 📘",
+    "Today's learning is tomorrow's success 📘",
     "Keep moving, keep improving 🏃‍♂️",
     "The best investment? Your time and effort 💡",
     "Time teaches lessons that books can't 📖",
@@ -100,8 +100,8 @@ const MinimalistClock = () => {
   const getIndianDate = () => {
     const options = {
       timeZone: "Asia/Kolkata",
-      weekday: "long" as "long",
-      month: "long" as "long",
+      weekday: "short" as "short",
+      month: "short" as "short",
       day: "numeric" as "numeric",
     };
     return time.toLocaleDateString("en-US", options);
@@ -112,73 +112,88 @@ const MinimalistClock = () => {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="w-full max-w-md mx-auto"
+      className="w-full max-w-lg mx-auto h-48" // Fixed height constraint
     >
-      <div className="rounded-xl border bg-card p-6 shadow-lg backdrop-blur-sm transition-all duration-500 dark:bg-card dark:shadow-2xl dark:shadow-primary/20">
-        {/* Day/Night Icon */}
-        <motion.div
-          className="flex justify-end mb-2"
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.2 }}
-        >
-          <div className="p-2 rounded-full bg-secondary dark:bg-secondary/20">
-            {isNight ? (
-              <Moon className="w-6 h-6 text-blue-700" />
-            ) : (
-              <Sun className="w-6 h-6 text-yellow-600" />
-            )}
+      <div className="h-full rounded-2xl border bg-card p-4 shadow-lg backdrop-blur-sm dark:bg-card dark:shadow-2xl dark:shadow-primary/20 flex flex-col">
+        
+        {/* Compact Header */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <motion.div
+              className="p-1.5 rounded-lg bg-secondary dark:bg-secondary/20"
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.1 }}
+            >
+              {isNight ? (
+                <Moon className="w-4 h-4 text-blue-600" />
+              ) : (
+                <Sun className="w-4 h-4 text-yellow-600" />
+              )}
+            </motion.div>
+            <div className="text-xs text-muted-foreground">
+              {getIndianDate()}
+            </div>
           </div>
-        </motion.div>
+          <div className="text-xs font-mono text-muted-foreground">
+            IST
+          </div>
+        </div>
 
-        {/* Time Display */}
-        <motion.div
-          className="flex justify-center items-baseline text-4xl md:text-6xl font-mono tracking-[0.2em] font-bold text-center mb-2 text-primary dark:text-primary"
-          animate={{
-            textShadow: "0 0 15px hsl(var(--primary) / 0.2)",
-          }}
-          transition={{
-            duration: 2,
-            repeat: Number.POSITIVE_INFINITY,
-            repeatType: "reverse",
-          }}
-        >
-          <span>{hours}</span>
-          <span className="animate-pulse">:</span>
-          <span>{minutes}</span>
-          <span className="ml-2 text-lg md:text-2xl font-semibold text-muted-foreground dark:text-muted-foreground">
-            {meridian}
-          </span>
-        </motion.div>
+        {/* Compact Time Display */}
+        <div className="flex-1 flex items-center justify-center">
+          <motion.div
+            className="text-center"
+            animate={{
+              textShadow: "0 0 10px hsl(var(--primary) / 0.3)",
+            }}
+            transition={{
+              duration: 2,
+              repeat: Number.POSITIVE_INFINITY,
+              repeatType: "reverse",
+            }}
+          >
+            <div className="flex items-baseline justify-center text-4xl md:text-5xl font-mono font-bold text-primary dark:text-primary tracking-wide">
+              <span>{hours}</span>
+              <motion.span 
+                className="animate-pulse mx-1"
+                animate={{ opacity: [1, 0.3, 1] }}
+                transition={{ duration: 1, repeat: Infinity }}
+              >
+                :
+              </motion.span>
+              <span>{minutes}</span>
+              <span className="ml-2 text-lg font-semibold text-muted-foreground dark:text-muted-foreground">
+                {meridian}
+              </span>
+            </div>
+          </motion.div>
+        </div>
 
-        {/* Date Display */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className="text-sm font-medium text-center mb-4 tracking-wide text-muted-foreground dark:text-muted-foreground"
-        >
-          {getIndianDate()}
-        </motion.div>
+        {/* Compact Quote */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={quote}
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -5 }}
+            transition={{ duration: 0.4 }}
+            className="mb-3"
+          >
+            <div className="text-xs italic text-center p-2 rounded-xl bg-secondary/50 dark:bg-secondary text-secondary-foreground dark:text-secondary-foreground line-clamp-2">
+              {quote}
+            </div>
+          </motion.div>
+        </AnimatePresence>
 
-        {/* Quote */}
+        {/* Compact Progress Bar */}
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
-          className="text-xs italic text-center p-3 rounded-xl bg-secondary/50 dark:bg-secondary text-secondary-foreground dark:text-secondary-foreground"
-        >
-          {quote}
-        </motion.div>
-
-        {/* Progress Bar */}
-        <motion.div
-          className="mt-4 h-1 rounded-full overflow-hidden bg-secondary dark:bg-secondary/20"
+          className="h-1.5 rounded-full overflow-hidden bg-secondary dark:bg-secondary/20"
           initial={{ scaleX: 0 }}
           animate={{ scaleX: 1 }}
-          transition={{ duration: 1 }}
+          transition={{ duration: 0.8 }}
         >
           <motion.div
             className="h-full rounded-full bg-primary dark:bg-primary"
@@ -199,4 +214,4 @@ const MinimalistClock = () => {
   );
 };
 
-export default MinimalistClock;
+export default CompactMinimalistClock;
