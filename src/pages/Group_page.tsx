@@ -1,542 +1,422 @@
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Search, Users, BookOpen, ArrowRight, Sparkles, Plus, Target, Award, Clock, TrendingUp, Star, Calendar, Filter, Grid3X3, List, ChevronDown, Bell } from "lucide-react";
-import Navbar from "../components/Nav_bar";
+import Chat from "@/components/chat/Chat";
+import { Dock, DockIcon } from "@/components/magicui/dock";
+import Member from "@/components/member";
+import Navbar from "@/components/Nav_bar";
 import { useAuth } from "@/components/providers/auth";
-import { CreateGroupDialog } from "../components/group/Create-group-dialog";
-import { JoinGroupDialog } from "../components/group/join-group-dialog";
-import { Group, JoinRequest } from "../type";
-import { fetchGroups, getjoinRequest } from "../lib/group-api";
-import { GroupSection } from "@/components/group/Group-section";
-import { UserGroupSection } from "@/components/group/Users-group-section";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Session from "@/components/session/Session";
+import { SessionTimer } from "@/components/session/SessionTimer";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import BeautifulIndianClock from "@/components/IndianClock";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useSession } from "@/contexts/SessionContext";
+import { deleteGroup, getGroupdetails, leaveGroup } from "@/lib/group-api";
+import { cn } from "@/lib/utils";
+import { GroupData } from "@/type";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  Calendar,
+  MessageSquare,
+  PenTool,
+  Users,
+  Zap,
+  Star,
+  TrendingUp,
+  Clock3,
+  Palette,
+  Lightbulb,
+  MoreVertical,
+  ExternalLink,
+  Share2,
+  Bookmark,
+  Settings
+} from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router";
+import { AIChatButton } from "@/components/chat/AIChatButton";
+import { AIChatDialog } from "@/components/chat/AIChatDialog";
+import { Whiteboard } from "@/components/whiteboard";
+import Diagram from "@/components/Diagram";
 
-const MotionCard = motion(Card);
+const quickActions = [
+  { id: "members", icon: Users, label: "Team", color: "bg-blue-500", description: "View all members" },
+  { id: "chat", icon: MessageSquare, label: "Chat", color: "bg-green-500", description: "Join discussion" },
+  { id: "sessions", icon: Clock3, label: "Sessions", color: "bg-purple-500", description: "Study together" },
+  { id: "whiteboard", icon: Palette, label: "Board", color: "bg-orange-500", description: "Collaborate visually" },
+  { id: "diagram", icon: Lightbulb, label: "AI Tools", color: "bg-pink-500", description: "Generate diagrams" },
+];
 
-export default function GroupsPage() {
-  const { user } = useAuth();
-  const [createdGroups, setCreatedGroups] = useState<Group[]>([]);
-  const [memberGroups, setMemberGroups] = useState<Group[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [error, setError] = useState<string | null>(null);
+const defaultGroupData: GroupData = {
+  id: "",
+  name: "",
+  subject: "",
+  description: undefined,
+  code: "",
+  creatorId: "",
+  memberIds: [],
+  createdAt: new Date().toISOString(),
+  creator: { id: "", name: "", email: "", avatarUrl: undefined },
+  members: [],
+  messages: [],
+  sessions: [],
+};
+
+export default function StudyGroupPage() {
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [groupData, setGroupData] = useState(defaultGroupData);
   const [isLoading, setIsLoading] = useState(true);
-  const [request, setRequest] = useState<JoinRequest[]>([]);
-  const [activeTab, setActiveTab] = useState("all");
-  const [viewMode, setViewMode] = useState("grid");
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [isAIChatOpen, setIsAIChatOpen] = useState(false);
+
+  const { groupId } = useParams();
+  const { user } = useAuth();
+  const id = user?.id;
+  const navigate = useNavigate();
+  const isOwner = groupData.creatorId === id;
+  const { activeSessions, endSession, leaveSession } = useSession();
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      setMousePosition({ x: e.clientX, y: e.clientY });
-    };
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, []);
-
-  useEffect(() => {
-    const loadGroups = async () => {
-      if (!user) return;
+    async function fetchGroupData() {
       setIsLoading(true);
-      setError(null);
       try {
-        const { createdGroups, memberGroups } = await fetchGroups();
-        const requests = await getjoinRequest();
-        setCreatedGroups(createdGroups || []);
-        setMemberGroups(memberGroups || []);
-        setRequest(requests);
+        if (groupId) {
+          const data: GroupData = await getGroupdetails(groupId);
+          setGroupData(data);
+        }
       } catch (error) {
-        console.error("Error fetching groups:", error);
-        setError("Failed to load groups. Please try again later.");
+        console.error("Error fetching group data:", error);
       } finally {
         setIsLoading(false);
       }
-    };
-    loadGroups();
-  }, [user]);
-
-  const filteredCreatedGroups = createdGroups.filter(
-    (group) =>
-      group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      group.subject.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-  
-  const filteredMemberGroups = memberGroups.filter(
-    (group) =>
-      (group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        group.subject.toLowerCase().includes(searchTerm.toLowerCase())) &&
-      user?.id !== group.creatorId
-  );
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-primary/10 flex items-center justify-center relative overflow-hidden">
-        {/* Floating Elements */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-accent/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-primary/10 rounded-full blur-2xl animate-bounce" style={{ animationDuration: '3s' }} />
-        </div>
-
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8, rotateY: 20 }}
-          animate={{ opacity: 1, scale: 1, rotateY: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="relative z-10"
-        >
-          <Card className="w-[500px] bg-card/95 backdrop-blur-2xl border border-border/50 shadow-2xl">
-            <CardHeader className="text-center pb-8">
-              <motion.div
-                initial={{ scale: 0, rotate: -180 }}
-                animate={{ scale: 1, rotate: 0 }}
-                transition={{ type: "spring", bounce: 0.5, duration: 1, delay: 0.2 }}
-                className="mx-auto w-24 h-24 bg-gradient-to-br from-primary via-primary to-accent rounded-3xl flex items-center justify-center mb-6 shadow-lg"
-              >
-                <BookOpen className="w-12 h-12 text-white" />
-              </motion.div>
-              <CardTitle className="text-4xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-                StudyWise Hub
-              </CardTitle>
-              <p className="text-muted-foreground text-lg mt-2">Your Gateway to Collaborative Learning</p>
-            </CardHeader>
-            <CardContent className="text-center">
-              <div className="space-y-4">
-                <div className="h-1 w-20 bg-gradient-to-r from-primary to-accent rounded-full mx-auto"></div>
-                <p className="text-muted-foreground">Please sign in to access your study groups and start learning with others</p>
-                <div className="flex justify-center space-x-2 mt-6">
-                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-    );
-  }
-
-  const totalGroups = createdGroups.length + memberGroups.length;
-  const todayDate = new Date().toLocaleDateString('en-US', { 
-    weekday: 'long', 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
-  });
+    }
+    fetchGroupData();
+  }, [groupId]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+    <div className="min-h-screen bg-gradient-to-br from-background to-secondary/10">
       <Navbar />
 
-      {/* Dynamic Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div 
-          className="absolute w-[600px] h-[600px] bg-gradient-to-r from-primary/8 to-accent/8 rounded-full blur-3xl transition-all duration-1000"
-          style={{
-            left: mousePosition.x - 300,
-            top: mousePosition.y - 300,
-          }}
-        />
-        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-2xl animate-pulse" />
-        <div className="absolute bottom-0 left-0 w-80 h-80 bg-accent/5 rounded-full blur-2xl animate-pulse" style={{ animationDelay: '1s' }} />
-      </div>
+      {/* Session Timers */}
+      {activeSessions.length > 0 &&
+        activeSessions.map((session) => (
+          <SessionTimer
+            key={session.id}
+            session={session}
+            onClose={() => endSession(session.id)}
+            onLeave={() => leaveSession(session.id)}
+            currentUserId={user?.id || ""}
+          />
+        ))}
 
-      <div className="relative z-10 pt-20">
-        {/* Header Section */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="container mx-auto px-6 py-8 max-w-7xl"
-        >
-          {/* Top Bar */}
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-8">
-            <div className="flex-1">
-              <motion.h1 
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="text-4xl lg:text-5xl font-bold text-foreground mb-2"
-              >
-                Welcome back, 
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent ml-2">
-                  {user?.name?.split(' ')[0] || "Scholar"}!
-                </span>
-              </motion.h1>
-              <motion.p 
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1 }}
-                className="text-muted-foreground text-lg flex items-center"
-              >
-                <Calendar className="w-5 h-5 mr-2" />
-                {todayDate}
-              </motion.p>
-            </div>
-
+      <div className="pt-20 px-6 pb-6">
+        <div className="max-w-7xl mx-auto">
+          {/* Header Cards Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
+            {/* Group Info Card */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2 }}
-              className="flex items-center space-x-4 mt-4 lg:mt-0"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="lg:col-span-8"
             >
-              <Badge variant="secondary" className="px-4 py-2 text-sm">
-                <Star className="w-4 h-4 mr-2" />
-                Level 5 Learner
-              </Badge>
-              <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-accent/20 rounded-2xl flex items-center justify-center">
-                <BeautifulIndianClock />
-              </div>
+              <Card className="h-full bg-gradient-to-r from-primary/5 to-secondary/5 border-primary/20">
+                <CardHeader className="pb-4">
+                  {isLoading ? (
+                    <div className="space-y-3">
+                      <Skeleton className="h-8 w-2/3" />
+                      <Skeleton className="h-4 w-1/2" />
+                    </div>
+                  ) : (
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-4">
+                        <Avatar className="h-16 w-16 border-2 border-primary/20">
+                          <AvatarImage src={groupData.creator.avatarUrl} />
+                          <AvatarFallback className="text-xl">
+                            {groupData.creator.name.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <h1 className="text-3xl font-bold text-foreground mb-1">
+                            {groupData.name}
+                          </h1>
+                          <p className="text-lg text-muted-foreground mb-2">
+                            {groupData.subject}
+                          </p>
+                          <div className="flex items-center gap-3">
+                            <Badge variant="secondary" className="flex items-center gap-1">
+                              <Users className="h-3 w-3" />
+                              {groupData.members?.length || 0} members
+                            </Badge>
+                            <Badge variant="secondary" className="flex items-center gap-1">
+                              <Star className="h-3 w-3" />
+                              Active
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                      <Button variant="ghost" size="icon">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                </CardHeader>
+                {!isLoading && (
+                  <CardContent>
+                    <p className="text-muted-foreground mb-4">
+                      {groupData.description || "Welcome to our study group! Let's learn together."}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm">
+                        <Zap className="h-4 w-4 mr-2" />
+                        Quick Session
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <Share2 className="h-4 w-4 mr-2" />
+                        Share Group
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        <Bookmark className="h-4 w-4 mr-2" />
+                        Bookmark
+                      </Button>
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
+            </motion.div>
+
+            {/* Stats Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="lg:col-span-4"
+            >
+              <Card className="h-full">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-primary" />
+                    Group Stats
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Messages</span>
+                      <span className="font-semibold">{groupData.messages?.length || 0}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Sessions</span>
+                      <span className="font-semibold">{groupData.sessions?.length || 0}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Created</span>
+                      <span className="font-semibold text-xs">
+                        {new Date(groupData.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </motion.div>
           </div>
 
-          {/* Stats Dashboard */}
+          {/* Quick Actions Grid */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-12"
+            transition={{ delay: 0.2 }}
+            className="mb-8"
           >
-            <DashboardCard
-              title="Total Groups"
-              value={totalGroups}
-              subtitle={`${createdGroups.length} created • ${memberGroups.length} joined`}
-              icon={<Users className="w-8 h-8" />}
-              gradient="from-blue-500 to-cyan-500"
-              delay={0}
-            />
-            <DashboardCard
-              title="Study Streak"
-              value="12"
-              subtitle="Days in a row"
-              icon={<TrendingUp className="w-8 h-8" />}
-              gradient="from-green-500 to-emerald-500"
-              delay={0.1}
-            />
-            <DashboardCard
-              title="Hours Studied"
-              value="47"
-              subtitle="This month"
-              icon={<Clock className="w-8 h-8" />}
-              gradient="from-purple-500 to-violet-500"
-              delay={0.2}
-            />
-            <DashboardCard
-              title="Pending Invites"
-              value={request.length}
-              subtitle="Waiting for response"
-              icon={<Bell className="w-8 h-8" />}
-              gradient="from-orange-500 to-red-500"
-              delay={0.3}
-            />
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <Zap className="h-5 w-5 text-primary" />
+              Quick Actions
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              {quickActions.map((action, index) => (
+                <motion.div
+                  key={action.id}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.1 * index }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Card
+                    className={cn(
+                      "cursor-pointer transition-all hover:shadow-lg border-2",
+                      activeTab === action.id
+                        ? "border-primary bg-primary/5"
+                        : "border-transparent hover:border-primary/20"
+                    )}
+                    onClick={() => setActiveTab(action.id)}
+                  >
+                    <CardContent className="p-4 text-center">
+                      <div className={cn("w-12 h-12 rounded-full mx-auto mb-3 flex items-center justify-center", action.color)}>
+                        <action.icon className="h-6 w-6 text-white" />
+                      </div>
+                      <h3 className="font-semibold mb-1">{action.label}</h3>
+                      <p className="text-xs text-muted-foreground">{action.description}</p>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
           </motion.div>
 
-          {/* Quick Actions Panel */}
+          {/* Main Content Area */}
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Card className="min-h-[600px]">
+              <CardHeader className="border-b">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      {quickActions.find(a => a.id === activeTab)?.icon && (
+                        <div className={cn("p-2 rounded-lg", quickActions.find(a => a.id === activeTab)?.color)}>
+                          {React.createElement(quickActions.find(a => a.id === activeTab)?.icon!, { className: "h-4 w-4 text-white" })}
+                        </div>
+                      )}
+                      {quickActions.find(a => a.id === activeTab)?.label || "Dashboard"}
+                    </CardTitle>
+                    <CardDescription>
+                      {quickActions.find(a => a.id === activeTab)?.description || "Main dashboard"}
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm">
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Open in New Tab
+                    </Button>
+                    <Button variant="ghost" size="icon">
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6">
+                {activeTab === "dashboard" && (
+                  <div className="space-y-6">
+                    <div className="text-center py-12">
+                      <h3 className="text-2xl font-semibold mb-2">Welcome to {groupData.name}</h3>
+                      <p className="text-muted-foreground mb-6">
+                        Choose an action above to get started with your study group.
+                      </p>
+                      <div className="flex justify-center gap-4">
+                        <Button onClick={() => setActiveTab("chat")}>
+                          <MessageSquare className="h-4 w-4 mr-2" />
+                          Start Chatting
+                        </Button>
+                        <Button variant="outline" onClick={() => setActiveTab("sessions")}>
+                          <Calendar className="h-4 w-4 mr-2" />
+                          Schedule Session
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {isLoading && activeTab !== "dashboard" ? (
+                  <div className="space-y-4">
+                    <Skeleton className="h-32 w-full" />
+                    <Skeleton className="h-64 w-full" />
+                  </div>
+                ) : (
+                  <>
+                    {activeTab === "members" && <Member groupData={groupData} />}
+                    {activeTab === "chat" && groupId && <Chat groupId={groupId} />}
+                    {activeTab === "sessions" && <Session />}
+                    {activeTab === "whiteboard" && <Whiteboard />}
+                    {activeTab === "diagram" && <Diagram />}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Action Panel */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
+            className="mt-8"
           >
-            <Card className="bg-gradient-to-r from-card/80 to-card/60 backdrop-blur-xl border border-border/50 shadow-2xl mb-8">
-              <CardHeader>
-                <CardTitle className="text-2xl flex items-center">
-                  <Sparkles className="w-6 h-6 mr-3 text-primary" />
-                  Quick Actions
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <ActionCard
-                  icon={<Plus className="w-6 h-6" />}
-                  title="Create New Group"
-                  description="Start a new study group"
-                  gradient="from-primary/10 to-primary/5"
-                  action={
-                    <CreateGroupDialog
-                      onCreateGroup={(newGroup) =>
-                        setCreatedGroups((prevGroups) => [...prevGroups, newGroup])
-                      }
-                    />
-                  }
-                />
-                <ActionCard
-                  icon={<Users className="w-6 h-6" />}
-                  title="Join Group"
-                  description="Join an existing group"
-                  gradient="from-accent/10 to-accent/5"
-                  action={<JoinGroupDialog />}
-                />
-                <ActionCard
-                  icon={<Search className="w-6 h-6" />}
-                  title="Discover Groups"
-                  description="Find public study groups"
-                  gradient="from-green-500/10 to-green-500/5"
-                  action={
-                    <Button variant="outline" className="w-full">
-                      Browse Groups
-                    </Button>
-                  }
-                />
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Search & Filter Bar */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-          >
-            <Card className="bg-card/50 backdrop-blur-sm border border-border/50 shadow-lg mb-8">
-              <CardContent className="p-6">
-                <div className="flex flex-col lg:flex-row items-center gap-4">
-                  {/* Search Bar */}
-                  <div className="relative flex-1 max-w-md">
-                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
-                    <Input
-                      type="text"
-                      placeholder="Search groups by name or subject..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-12 pr-4 h-12 text-base bg-background/70 border-0 shadow-inner focus:ring-2 focus:ring-primary/20"
-                    />
-                  </div>
-
-                  <Separator orientation="vertical" className="h-8 hidden lg:block" />
-
-                  {/* Tab Filters */}
-                  <div className="flex items-center bg-muted/30 rounded-xl p-1">
-                    <TabButton active={activeTab === "all"} onClick={() => setActiveTab("all")}>
-                      All ({totalGroups})
-                    </TabButton>
-                    <TabButton active={activeTab === "created"} onClick={() => setActiveTab("created")}>
-                      Created ({createdGroups.length})
-                    </TabButton>
-                    <TabButton active={activeTab === "joined"} onClick={() => setActiveTab("joined")}>
-                      Joined ({memberGroups.length})
-                    </TabButton>
-                  </div>
-
-                  <Separator orientation="vertical" className="h-8 hidden lg:block" />
-
-                  {/* View Mode Toggle */}
-                  <div className="flex items-center bg-muted/30 rounded-lg p-1">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex flex-wrap justify-between items-center gap-4">
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm text-muted-foreground">Group Actions:</span>
                     <Button
-                      variant={viewMode === "grid" ? "default" : "ghost"}
+                      variant="outline"
                       size="sm"
-                      onClick={() => setViewMode("grid")}
-                      className="h-8 w-8 p-0"
+                      onClick={() => setActiveTab("sessions")}
                     >
-                      <Grid3X3 className="w-4 h-4" />
+                      <Calendar className="h-4 w-4 mr-2" />
+                      View All Sessions
                     </Button>
-                    <Button
-                      variant={viewMode === "list" ? "default" : "ghost"}
-                      size="sm"
-                      onClick={() => setViewMode("list")}
-                      className="h-8 w-8 p-0"
-                    >
-                      <List className="w-4 h-4" />
+                    <Button size="sm">
+                      <Zap className="h-4 w-4 mr-2" />
+                      Start Study Session
                     </Button>
                   </div>
-
-                  {/* Filter Button */}
-                  <Button variant="outline" size="sm" className="flex items-center gap-2">
-                    <Filter className="w-4 h-4" />
-                    Filters
-                    <ChevronDown className="w-3 h-3" />
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" size="sm">
+                        {isOwner ? "Delete Group" : "Leave Group"}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          {isOwner ? "Delete Group" : "Leave Group"}
+                        </AlertDialogTitle>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={async () => {
+                            if (isOwner) await deleteGroup(groupData.id);
+                            else await leaveGroup(groupData.id);
+                            navigate("/groups");
+                          }}
+                        >
+                          {isOwner ? "Delete" : "Leave"}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </CardContent>
             </Card>
           </motion.div>
-
-          {/* Groups Content */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-            className="space-y-8"
-          >
-            {(activeTab === "all" || activeTab === "created") && (
-              <GroupsSection
-                title="Your Created Groups"
-                description="Study groups you've created and manage"
-                count={filteredCreatedGroups.length}
-                color="text-primary"
-              >
-                <UserGroupSection
-                  title=""
-                  groups={filteredCreatedGroups}
-                  isLoading={isLoading}
-                  error={error}
-                  request={request}
-                  setRequest={setRequest}
-                />
-              </GroupsSection>
-            )}
-
-            {(activeTab === "all" || activeTab === "joined") && (
-              <GroupsSection
-                title="Joined Groups"
-                description="Study groups you're a member of"
-                count={filteredMemberGroups.length}
-                color="text-accent-foreground"
-              >
-                <GroupSection
-                  title=""
-                  groups={filteredMemberGroups}
-                  isLoading={isLoading}
-                  error={error}
-                  isOwner={false}
-                />
-              </GroupsSection>
-            )}
-
-            {/* Enhanced Empty State */}
-            {!isLoading && filteredCreatedGroups.length === 0 && filteredMemberGroups.length === 0 && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="text-center py-20"
-              >
-                <Card className="max-w-md mx-auto bg-gradient-to-br from-primary/5 to-accent/5 border border-border/50">
-                  <CardContent className="p-12">
-                    <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-primary/20 to-accent/20 rounded-full flex items-center justify-center">
-                      <BookOpen className="w-10 h-10 text-primary" />
-                    </div>
-                    <h3 className="text-2xl font-bold text-foreground mb-4">
-                      {searchTerm ? "No groups found" : "Ready to start learning?"}
-                    </h3>
-                    <p className="text-muted-foreground mb-8">
-                      {searchTerm 
-                        ? "Try adjusting your search terms or browse all available groups" 
-                        : "Create your first study group or join an existing one to begin your collaborative learning journey"
-                      }
-                    </p>
-                    {!searchTerm && (
-                      <div className="space-y-3">
-                        <CreateGroupDialog
-                          onCreateGroup={(newGroup) =>
-                            setCreatedGroups((prevGroups) => [...prevGroups, newGroup])
-                          }
-                        />
-                        <JoinGroupDialog />
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )}
-          </motion.div>
-        </motion.div>
+        </div>
       </div>
+
+      <AIChatButton
+        onClick={() => setIsAIChatOpen(true)}
+        isOpen={isAIChatOpen}
+      />
+      <AIChatDialog
+        isOpen={isAIChatOpen}
+        onClose={() => setIsAIChatOpen(false)}
+      />
     </div>
   );
 }
-
-// Dashboard Card Component
-const DashboardCard = ({ title, value, subtitle, icon, gradient, delay }: {
-  title: string;
-  value: string | number;
-  subtitle: string;
-  icon: React.ReactNode;
-  gradient: string;
-  delay: number;
-}) => (
-  <motion.div
-    initial={{ opacity: 0, y: 20, scale: 0.9 }}
-    animate={{ opacity: 1, y: 0, scale: 1 }}
-    transition={{ delay, type: "spring", stiffness: 100 }}
-    whileHover={{ y: -5, scale: 1.02 }}
-    className="group"
-  >
-    <Card className="bg-card/80 backdrop-blur-sm border border-border/50 shadow-lg hover:shadow-2xl transition-all duration-300 relative overflow-hidden">
-      <div className={`absolute top-0 right-0 w-20 h-20 bg-gradient-to-br ${gradient} opacity-10 rounded-bl-3xl`}></div>
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className={`p-3 rounded-xl bg-gradient-to-br ${gradient} text-white shadow-lg group-hover:scale-110 transition-transform`}>
-            {icon}
-          </div>
-          <div className="text-right">
-            <div className="text-3xl font-bold text-foreground">{value}</div>
-            <div className="text-sm text-muted-foreground">{title}</div>
-          </div>
-        </div>
-        <p className="text-xs text-muted-foreground">{subtitle}</p>
-        <div className={`mt-3 h-1 bg-gradient-to-r ${gradient} rounded-full scale-x-0 group-hover:scale-x-100 transition-transform duration-300`}></div>
-      </CardContent>
-    </Card>
-  </motion.div>
-);
-
-// Action Card Component
-const ActionCard = ({ icon, title, description, gradient, action }: {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-  gradient: string;
-  action: React.ReactNode;
-}) => (
-  <motion.div whileHover={{ scale: 1.02, y: -2 }} className="group">
-    <Card className={`bg-gradient-to-br ${gradient} border border-border/30 hover:border-primary/30 transition-all duration-300 h-full`}>
-      <CardContent className="p-6">
-        <div className="flex items-center mb-4">
-          <div className="p-2 bg-primary/10 rounded-lg mr-3">
-            {icon}
-          </div>
-          <div>
-            <h4 className="font-semibold text-foreground">{title}</h4>
-            <p className="text-sm text-muted-foreground">{description}</p>
-          </div>
-        </div>
-        {action}
-      </CardContent>
-    </Card>
-  </motion.div>
-);
-
-// Groups Section Component
-const GroupsSection = ({ title, description, count, color, children }: {
-  title: string;
-  description: string;
-  count: number;
-  color: string;
-  children: React.ReactNode;
-}) => (
-  <div className="space-y-6">
-    <div className="flex items-center justify-between">
-      <div>
-        <h2 className="text-2xl font-bold text-foreground flex items-center">
-          <div className={`w-1 h-8 ${color.replace('text-', 'bg-')} rounded-full mr-4`}></div>
-          {title}
-          <Badge variant="secondary" className="ml-3">
-            {count}
-          </Badge>
-        </h2>
-        <p className="text-muted-foreground mt-1 ml-5">{description}</p>
-      </div>
-    </div>
-    {children}
-  </div>
-);
-
-// Tab Button Component
-const TabButton = ({ children, active, onClick }: {
-  children: React.ReactNode;
-  active: boolean;
-  onClick: () => void;
-}) => (
-  <motion.button
-    whileHover={{ scale: 1.05 }}
-    whileTap={{ scale: 0.95 }}
-    onClick={onClick}
-    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-      active
-        ? "bg-primary text-primary-foreground shadow-md"
-        : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-    }`}
-  >
-    {children}
-  </motion.button>
-);

@@ -18,6 +18,16 @@ export async function fetchGroups(): Promise<{
   };
 }
 
+export async function previewGroup(groupCode: string): Promise<GroupData> {
+  const response = await axios.post(
+    `${API_URL}/api/groups/preview`,
+    { groupCode },
+    { withCredentials: true }
+  );
+  return response.data.group;
+}
+
+
 export async function getjoinRequest(): Promise<any> {
   try {
     const response = await axios.get(`${API_URL}/api/groups/join-request`, {

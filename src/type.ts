@@ -1,4 +1,5 @@
 export type Group = {
+  messages: any;
   id: number;
   name: string;
   memberIds: string[];
