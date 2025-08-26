@@ -76,39 +76,43 @@ function Home() {
       <Navbar />
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 relative overflow-hidden">
 
-        {/* Animated Background Elements */}
-        <div className="fixed inset-0 pointer-events-none z-0">
-          {/* Main cursor follower - much brighter */}
-          <div
-            className="absolute w-96 h-96 bg-primary/10 rounded-full blur-3xl transition-all duration-700 ease-out"
-            style={{
-              left: mousePosition.x - 192,
-              top: mousePosition.y - 192,
-            }}
-          />
+       {/* Animated Background Elements */}
+<div className="fixed inset-0 pointer-events-none z-0">
+  {/* Main cursor follower - instant position, smooth fade */}
+  <div
+    className="absolute w-96 h-96 bg-primary/10 rounded-full blur-3xl 
+               transition-opacity duration-700 ease-out"
+    style={{
+      transform: `translate(${mousePosition.x - 192}px, ${mousePosition.y - 192}px)`,
+    }}
+  />
 
-          {/* Secondary cursor ring - adds extra glow */}
-          <div
-            className="absolute w-64 h-64 bg-primary/15 rounded-full blur-2xl transition-all duration-500 ease-out"
-            style={{
-              left: mousePosition.x - 128,
-              top: mousePosition.y - 128,
-            }}
-          />
+  {/* Secondary cursor ring */}
+  <div
+    className="absolute w-64 h-64 bg-primary/15 rounded-full blur-2xl 
+               transition-opacity duration-500 ease-out"
+    style={{
+      transform: `translate(${mousePosition.x - 128}px, ${mousePosition.y - 128}px)`,
+    }}
+  />
 
-          {/* Small bright center */}
-          <div
-            className="absolute w-32 h-32 bg-primary/20 rounded-full blur-xl transition-all duration-300 ease-out"
-            style={{
-              left: mousePosition.x - 64,
-              top: mousePosition.y - 64,
-            }}
-          />
+  {/* Small bright center */}
+  <div
+    className="absolute w-32 h-32 bg-primary/20 rounded-full blur-xl 
+               transition-opacity duration-300 ease-out"
+    style={{
+      transform: `translate(${mousePosition.x - 64}px, ${mousePosition.y - 64}px)`,
+    }}
+  />
 
-          {/* Static background elements - keeping original */}
-          <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-accent/10 rounded-full blur-2xl animate-pulse" />
-          <div className="absolute bottom-1/4 right-1/4 w-48 h-48 bg-primary/10 rounded-full blur-2xl animate-bounce" style={{ animationDuration: '3s' }} />
-        </div>
+  {/* Static background elements */}
+  <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-accent/10 rounded-full blur-2xl animate-pulse" />
+  <div
+    className="absolute bottom-1/4 right-1/4 w-48 h-48 bg-primary/10 rounded-full blur-2xl animate-bounce"
+    style={{ animationDuration: '3s' }}
+  />
+</div>
+
 
 
 
@@ -467,7 +471,7 @@ function Home() {
         <DeveloperSection />
       </div>
 
-      <style jsx>{`
+      <style>{`
         .bg-grid-pattern {
           background-image: 
             linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px),
