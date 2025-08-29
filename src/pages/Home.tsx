@@ -468,7 +468,7 @@ function Home() {
           <div className="absolute bottom-10 right-10 w-24 h-24 bg-white/10 rounded-full blur-xl animate-float" style={{ animationDelay: '2s' }}></div>
         </section>
 
-        <DeveloperSection />
+        {/* <DeveloperSection /> */}
       </div>
 
       <style>{`

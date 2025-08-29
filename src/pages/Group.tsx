@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { 
-  Search, 
-  Users, 
-  BookOpen, 
+import {
+  Search,
+  Users,
+  BookOpen,
   Sparkles,
   Grid3X3,
   Heart,
@@ -62,7 +62,7 @@ export default function GroupsPage() {
       group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       group.subject.toLowerCase().includes(searchTerm.toLowerCase())
   );
-  
+
   const filteredMemberGroups = memberGroups.filter(
     (group) =>
       (group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -93,7 +93,7 @@ export default function GroupsPage() {
             <Brain className="w-10 h-10 text-primary-foreground" />
           </motion.div>
           <h2 className="text-3xl font-bold mb-4 bg-gradient-to-r from-primary via-primary/80 to-primary/60 bg-clip-text text-transparent">
-            BrainHub
+            CollabRoom
           </h2>
 
         </MotionCard>
@@ -119,7 +119,7 @@ export default function GroupsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-primary/5">
       <Navbar />
-      
+
       <div className="container mx-auto px-4 py-8 mt-16">
         <motion.div
           variants={container}
@@ -135,8 +135,7 @@ export default function GroupsPage() {
                 <CardContent className="p-8">
                   <div className="flex items-center justify-between mb-6">
                     <div>
-                      <h1 className="text-4xl font-bold mb-2">BrainHub</h1>
-                      <p className="text-primary-foreground/80 text-lg flex items-center gap-2">
+                      <h1 className="text-4xl font-bold mb-2">Let the Learning Begin</h1>                      <p className="text-primary-foreground/80 text-lg flex items-center gap-2">
                         <Sparkles className="h-5 w-5" />
                         Welcome back, <span className="font-semibold">{user?.name || "Scholar"}</span>!
                         <Sparkles className="h-5 w-5" />
@@ -152,7 +151,7 @@ export default function GroupsPage() {
                       <Brain className="w-12 h-12 text-primary-foreground/20" />
                     </motion.div>
                   </div>
-                  
+
                   <div className="flex flex-col sm:flex-row gap-4">
                     <CreateGroupDialog
                       onCreateGroup={(newGroup) =>
@@ -166,7 +165,7 @@ export default function GroupsPage() {
 
               {/* Clock */}
               <Card className="bg-background border border-border shadow-xl">
-                <CardContent className="p-6">
+                <CardContent className="p-4">
                   <BeautifulIndianClock />
                 </CardContent>
               </Card>
@@ -356,11 +355,10 @@ const MasonryTabButton = ({
   <Button
     variant="ghost"
     onClick={onClick}
-    className={`relative flex-1 px-4 py-2 transition-all duration-200 ${
-      active
+    className={`relative flex-1 px-4 py-2 transition-all duration-200 ${active
         ? "text-primary font-medium"
         : "text-muted-foreground hover:text-primary"
-    }`}
+      }`}
   >
     <div className="flex items-center space-x-2">{icon}<span>{children}</span></div>
     {active && (
@@ -407,7 +405,7 @@ const MasonryContentSection = ({
         </div>
       </CardHeader>
     </Card>
-    
+
     <Card className="bg-background border border-border shadow-lg">
       <CardContent className="p-6">
         {children}
