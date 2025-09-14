@@ -46,7 +46,7 @@ export const Info = ({
               "text-black font-semibold text-xl mt-1",
               "font-poppins"
             )}>
-              studywise
+              CollabRoom
             </span>
           </Button>
         </Link>
