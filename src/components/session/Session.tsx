@@ -40,6 +40,7 @@ import { ScrollArea } from "../ui/scroll-area";
 import { Badge } from "../ui/badge";
 import { motion, AnimatePresence } from "framer-motion";
 import { SessionList } from "./SessionList";
+import CallSummariesList from "@/components/call/CallSummariesList";
 
 // Enhanced form data interface
 interface SessionFormData {
@@ -696,6 +697,20 @@ const Session = () => {
         <CardContent className="flex-1 overflow-hidden p-6">
           <ScrollArea className="h-full pr-4">
             <div className="grid grid-cols-1 gap-6">
+              {/* Call Summaries for this group */}
+              {groupId && (
+                <div className="w-full">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Discussion Summaries</CardTitle>
+                      <CardDescription>Transcriptions and summaries from recent voice discussions</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <CallSummariesList groupId={groupId} />
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
               {upcomingSessions.length > 0 && (
                 <div className="w-full">
                   <SessionList

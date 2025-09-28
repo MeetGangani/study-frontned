@@ -46,7 +46,8 @@ import {
   ExternalLink,
   Share2,
   Bookmark,
-  Settings
+  Settings,
+  PhoneCall
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
@@ -54,10 +55,12 @@ import { AIChatButton } from "@/components/chat/AIChatButton";
 import { AIChatDialog } from "@/components/chat/AIChatDialog";
 import { Whiteboard } from "@/components/whiteboard";
 import Diagram from "@/components/Diagram";
+import GroupDiscussionPage from "@/components/call/GroupDiscussionPage";
 
 const quickActions = [
   { id: "members", icon: Users, label: "Team", color: "bg-blue-500", description: "View all members" },
   { id: "chat", icon: MessageSquare, label: "Chat", color: "bg-green-500", description: "Join discussion" },
+  { id: "discussion", icon: PhoneCall, label: "Discussion", color: "bg-red-500", description: "Audio calls with AI summaries" },
   { id: "sessions", icon: Clock3, label: "Sessions", color: "bg-purple-500", description: "Study together" },
   { id: "whiteboard", icon: Palette, label: "Board", color: "bg-orange-500", description: "Collaborate visually" },
   { id: "diagram", icon: Lightbulb, label: "AI Tools", color: "bg-pink-500", description: "Generate diagrams" },
@@ -246,7 +249,7 @@ export default function StudyGroupPage() {
               <Zap className="h-5 w-5 text-primary" />
               Quick Actions
             </h2>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
               {quickActions.map((action, index) => (
                 <motion.div
                   key={action.id}
@@ -325,6 +328,10 @@ export default function StudyGroupPage() {
                           <MessageSquare className="h-4 w-4 mr-2" />
                           Start Chatting
                         </Button>
+                        <Button onClick={() => setActiveTab("discussion")}>
+                          <PhoneCall className="h-4 w-4 mr-2" />
+                          Voice Discussion
+                        </Button>
                         <Button variant="outline" onClick={() => setActiveTab("sessions")}>
                           <Calendar className="h-4 w-4 mr-2" />
                           Schedule Session
@@ -342,6 +349,13 @@ export default function StudyGroupPage() {
                   <>
                     {activeTab === "members" && <Member groupData={groupData} />}
                     {activeTab === "chat" && groupId && <Chat groupId={groupId} />}
+                    {activeTab === "discussion" && groupId && (
+                      <GroupDiscussionPage
+                        groupId={groupId}
+                        groupName={groupData.name}
+                        isGroupMember={groupData.members.some(member => member.id === user?.id) || groupData.creatorId === user?.id}
+                      />
+                    )}
                     {activeTab === "sessions" && <Session />}
                     {activeTab === "whiteboard" && <Whiteboard />}
                     {activeTab === "diagram" && <Diagram />}

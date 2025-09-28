@@ -30,6 +30,9 @@ interface AudioCallProps {
   autoJoin?: boolean;
   showControls?: boolean;
   participantNames?: { [key: string]: string };
+  groupId?: string;
+  sessionId?: string;
+  participantsForSummary?: string[];
 }
 
 // // Create a separate component for participants to prevent re-renders
@@ -501,6 +504,9 @@ function AudioCall({
   className = "",
   autoJoin = true,
   participantNames,
+  groupId,
+  sessionId,
+  participantsForSummary,
 }: AudioCallProps) {
   const [client, setClient] = useState<StreamVideoClient | null>(null);
   const [callInstance, setCallInstance] = useState<Call | null>(null);
@@ -513,6 +519,9 @@ function AudioCall({
   const clientRef = useRef<StreamVideoClient | null>(null);
   const callRef = useRef<Call | null>(null);
   const initializedRef = useRef(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<BlobPart[]>([]);
+  const callStartRef = useRef<number | null>(null);
 
   // Critical: Add this to track setup status and prevent multiple setups
   const setupInProgressRef = useRef(false);
@@ -570,6 +579,47 @@ function AudioCall({
       // This is important to do BEFORE we attempt to leave, so socket notifications happen immediately
       setIsInCall(false);
       onCallStateChange?.({ isInCall: false, isMuted });
+
+      // Stop and upload recording first
+      try {
+        if (mediaRecorderRef.current) {
+          mediaRecorderRef.current.stop();
+          // wait a moment to flush chunks
+          await new Promise((r) => setTimeout(r, 250));
+          const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' });
+          recordedChunksRef.current = [];
+
+          // Prepare metadata
+          const durationSec = callStartRef.current ? Math.floor((Date.now() - callStartRef.current) / 1000) : 0;
+          const startTime = callStartRef.current ? new Date(callStartRef.current).toISOString() : new Date().toISOString();
+          const endTime = new Date().toISOString();
+
+          // Upload to backend if groupId provided
+          if (groupId) {
+            try {
+              const form = new FormData();
+              form.append('audio', blob, 'call.webm');
+              form.append('groupId', groupId);
+              if (sessionId) form.append('sessionId', sessionId);
+              form.append('duration', String(durationSec));
+              if (participantsForSummary) form.append('participants', JSON.stringify(participantsForSummary));
+              form.append('startTime', startTime);
+              form.append('endTime', endTime);
+
+              await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/transcribe-and-save`, {
+                method: 'POST',
+                body: form,
+                credentials: 'include',
+              });
+              console.log('Uploaded recording for transcription');
+            } catch (uploadErr) {
+              console.error('Failed to upload recording:', uploadErr);
+            }
+          }
+        }
+      } catch (recErr) {
+        console.warn('Recording stop/upload error:', recErr);
+      }
 
       // Then leave the call through Stream's SDK
       await callRef.current.leave();
@@ -799,6 +849,22 @@ function AudioCall({
         console.log("=== Final Device States ===");
         console.log("Microphone state:", call.microphone?.state);
         console.log("Microphone enabled:", call.microphone?.enabled);
+
+        // Start local recording of microphone after join for summary generation
+        try {
+          const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const recorder = new MediaRecorder(micStream, { mimeType: 'audio/webm;codecs=opus' });
+          recordedChunksRef.current = [];
+          recorder.ondataavailable = (e) => {
+            if (e.data && e.data.size > 0) recordedChunksRef.current.push(e.data);
+          };
+          recorder.start();
+          mediaRecorderRef.current = recorder;
+          callStartRef.current = Date.now();
+          console.log('Local audio recording started for summary');
+        } catch (recErr) {
+          console.warn('Failed to start local recording:', recErr);
+        }
 
         // Update UI state
         setIsInCall(true);

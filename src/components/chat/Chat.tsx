@@ -954,6 +954,9 @@ const ChatRoom = ({ groupId }: { groupId: string }) => {
               }),
               {}
             )}
+            groupId={groupId}
+            sessionId={undefined}
+            participantsForSummary={callParticipants.map(p => p.id)}
           />
         </div>
       )}

@@ -110,9 +110,8 @@ export const getOrCreateCall = async (client: StreamVideoClient, callId: string,
   try {
     console.log('Getting or creating audio call:', callId);
     
-    // Create or get the call with default call type (changed from audio_room)
-    // This is a critical change - using 'default' type instead of 'audio_room'
-    const call = client.call('development', callId);
+    // Use a standard call type that exists in Stream (default)
+    const call = client.call('default', callId);
     
     // Check if the call already exists
     try {
