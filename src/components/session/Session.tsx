@@ -644,7 +644,7 @@ const Session = () => {
 
   return (
     <div className="relative pb-24">
-      <Card className="max-h-[calc(100vh-12rem)] overflow-hidden flex flex-col">
+      <Card className="h-[calc(100vh-10rem)] overflow-hidden flex flex-col">
         <CardHeader className="shrink-0 bg-gradient-to-r from-primary/5 to-secondary/5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
