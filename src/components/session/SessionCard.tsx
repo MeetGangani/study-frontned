@@ -8,6 +8,8 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { Badge } from "../ui/badge";
 import { useEffect, useState } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 
 const SessionCard = ({
   session,
@@ -25,6 +27,8 @@ const SessionCard = ({
   const [summary, setSummary] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
+  const [isSummaryOpen, setIsSummaryOpen] = useState(false);
+  const [transcript, setTranscript] = useState<string | null>(null);
 
   useEffect(() => {
     let ignore = false;
@@ -40,6 +44,7 @@ const SessionCard = ({
         if (!ignore) {
           setSummary(data.summary || null);
           setStatus(data.status || null);
+          setTranscript(data.transcript || null);
         }
       } catch (_) {
         if (!ignore) setStatus("failed");
@@ -50,6 +55,39 @@ const SessionCard = ({
     fetchSummary();
     return () => { ignore = true; };
   }, [session.id, session.endedAt]);
+  
+  const refreshSummary = async () => {
+    if (!session.endedAt) return;
+    setLoadingSummary(true);
+    try {
+      // First trigger regeneration on the server
+      await fetch(`${import.meta.env.VITE_API_URL}/api/sessions/${session.id}/summary/regenerate`, {
+        method: "POST",
+        credentials: "include",
+      });
+      // Then fetch the latest status and content
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/sessions/${session.id}/summary`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed");
+      const data = await res.json();
+      setSummary(data.summary || null);
+      setStatus(data.status || null);
+      setTranscript(data.transcript || null);
+    } catch (_) {
+      setStatus("failed");
+    } finally {
+      setLoadingSummary(false);
+    }
+  };
+
+  // Auto-regenerate on dialog open if summary is not yet completed
+  useEffect(() => {
+    if (isSummaryOpen && session.endedAt && status !== "completed" && !loadingSummary) {
+      void refreshSummary();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSummaryOpen]);
   
   const handleDelete = async () => {
     try {
@@ -142,14 +180,59 @@ const SessionCard = ({
         </div>
         {session.endedAt && (
           <div className="mt-4">
-            <h4 className="font-semibold mb-1">Session Summary</h4>
-            {loadingSummary && <p className="text-sm text-muted-foreground">Loading summary…</p>}
-            {!loadingSummary && status === "completed" && summary && (
-              <p className="text-sm whitespace-pre-wrap">{summary}</p>
-            )}
-            {!loadingSummary && (!summary || status !== "completed") && (
-              <p className="text-sm text-muted-foreground">No summary available.</p>
-            )}
+            <Dialog open={isSummaryOpen} onOpenChange={setIsSummaryOpen}>
+              <DialogTrigger asChild>
+                <Button variant="secondary" size="sm">
+                  View AI summary (beta)
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-3xl">
+                <DialogHeader>
+                  <DialogTitle>Session Review</DialogTitle>
+                  <DialogDescription>
+                    AI summary may contain inaccuracies. Compare with the transcript before relying on details.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-muted-foreground">
+                      {loadingSummary ? "Fetching latest…" : status === "completed" ? "Ready" : status === "pending" ? "Generating…" : status === "failed" ? "Unavailable" : "Not available"}
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={refreshSummary} disabled={loadingSummary}>
+                      Refresh
+                    </Button>
+                  </div>
+                  <Tabs defaultValue={transcript ? "transcript" : "summary"}>
+                    <TabsList>
+                      <TabsTrigger value="transcript">Transcript</TabsTrigger>
+                      <TabsTrigger value="summary">AI Summary (beta)</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="transcript">
+                      <div className="rounded-md border p-3 max-h-80 overflow-auto">
+                        {transcript ? (
+                          <p className="text-sm whitespace-pre-wrap">{transcript}</p>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">Transcript not available.</p>
+                        )}
+                      </div>
+                    </TabsContent>
+                    <TabsContent value="summary">
+                      <div className="rounded-md border p-3 max-h-80 overflow-auto">
+                        {loadingSummary && (
+                          <p className="text-sm text-muted-foreground">Loading summary…</p>
+                        )}
+                        {!loadingSummary && status === "completed" && summary && (
+                          <p className="text-sm whitespace-pre-wrap">{summary}</p>
+                        )}
+                        {!loadingSummary && (!summary || status !== "completed") && (
+                          <p className="text-sm text-muted-foreground">No summary available yet.</p>
+                        )}
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         )}
         {children}
