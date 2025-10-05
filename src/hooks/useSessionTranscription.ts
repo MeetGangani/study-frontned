@@ -1,5 +1,32 @@
 import { useEffect, useRef, useState } from "react";
 
+// Merge helper: append "addition" to "base" while removing any overlapping word suffix/prefix
+function appendWithWordOverlap(base: string, addition: string): string {
+  const trimmedBase = base.trim();
+  const trimmedAddition = addition.trim();
+  if (!trimmedBase) return trimmedAddition;
+  if (!trimmedAddition) return trimmedBase;
+
+  const baseWords = trimmedBase.split(/\s+/);
+  const addWords = trimmedAddition.split(/\s+/);
+
+  // Limit overlap window to last 20 words to keep it efficient and meaningful
+  const maxOverlap = Math.min(20, baseWords.length, addWords.length);
+  let overlapSize = 0;
+
+  for (let k = maxOverlap; k > 0; k--) {
+    const baseSuffix = baseWords.slice(-k).join(" ").toLowerCase();
+    const addPrefix = addWords.slice(0, k).join(" ").toLowerCase();
+    if (baseSuffix === addPrefix) {
+      overlapSize = k;
+      break;
+    }
+  }
+
+  const nonOverlappingTail = overlapSize > 0 ? addWords.slice(overlapSize).join(" ") : trimmedAddition;
+  return nonOverlappingTail ? `${trimmedBase} ${nonOverlappingTail}`.trim() : trimmedBase;
+}
+
 interface UseSessionTranscriptionOptions {
   sessionId: string;
   lang?: string; // e.g. "en-US"
@@ -20,6 +47,7 @@ export function useSessionTranscription({
   const flushTimerRef = useRef<number | null>(null);
   const recognitionRef = useRef<any>(null);
   const restartTimerRef = useRef<number | null>(null);
+  const lastCommittedRef = useRef<string>("");
 
   useEffect(() => {
     const SR: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -37,9 +65,9 @@ export function useSessionTranscription({
   }, [enabled, isSupported, lang, sessionId]);
 
   async function flushBuffer() {
-    // merge interim into buffer before flushing to avoid losing partials
+    // Merge the latest interim safely to avoid duplicating words already committed
     if (interimRef.current) {
-      bufferRef.current += (bufferRef.current ? " " : "") + interimRef.current;
+      bufferRef.current = appendWithWordOverlap(bufferRef.current, interimRef.current);
       interimRef.current = "";
     }
     const text = bufferRef.current.trim();
@@ -74,7 +102,9 @@ export function useSessionTranscription({
         const result = event.results[i];
         const text = result[0]?.transcript || "";
         if (result.isFinal) {
-          bufferRef.current += (bufferRef.current ? " " : "") + text;
+          // Append final text using overlap-aware merge to prevent echoes like "hello hello"
+          bufferRef.current = appendWithWordOverlap(bufferRef.current, text);
+          lastCommittedRef.current = bufferRef.current;
         } else {
           interim += text;
         }
