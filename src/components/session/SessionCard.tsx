@@ -7,6 +7,7 @@ import { SessionType } from "./Session";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Badge } from "../ui/badge";
+import { useEffect, useState } from "react";
 
 const SessionCard = ({
   session,
@@ -21,6 +22,34 @@ const SessionCard = ({
 }) => {
   const { user } = useAuth();
   const { startSession, joinSession } = useSession();
+  const [summary, setSummary] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
+  const [loadingSummary, setLoadingSummary] = useState(false);
+
+  useEffect(() => {
+    let ignore = false;
+    async function fetchSummary() {
+      if (!session.endedAt) return;
+      setLoadingSummary(true);
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/sessions/${session.id}/summary`, {
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error("Failed");
+        const data = await res.json();
+        if (!ignore) {
+          setSummary(data.summary || null);
+          setStatus(data.status || null);
+        }
+      } catch (_) {
+        if (!ignore) setStatus("failed");
+      } finally {
+        if (!ignore) setLoadingSummary(false);
+      }
+    }
+    fetchSummary();
+    return () => { ignore = true; };
+  }, [session.id, session.endedAt]);
   
   const handleDelete = async () => {
     try {
@@ -111,6 +140,18 @@ const SessionCard = ({
             )}
           </div>
         </div>
+        {session.endedAt && (
+          <div className="mt-4">
+            <h4 className="font-semibold mb-1">Session Summary</h4>
+            {loadingSummary && <p className="text-sm text-muted-foreground">Loading summary…</p>}
+            {!loadingSummary && status === "completed" && summary && (
+              <p className="text-sm whitespace-pre-wrap">{summary}</p>
+            )}
+            {!loadingSummary && (!summary || status !== "completed") && (
+              <p className="text-sm text-muted-foreground">No summary available.</p>
+            )}
+          </div>
+        )}
         {children}
       </CardHeader>
     </Card>

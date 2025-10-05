@@ -12,6 +12,7 @@ import { useSession } from '@/contexts/SessionContext';
 import { toast } from 'sonner';
 import { useTheme } from "../providers/theme-provider";
 import { Badge } from "../ui/badge";
+import { useSessionTranscription } from "@/hooks/useSessionTranscription";
 
 // Helper function to format time
 const formatTime = (ms: number) => {
@@ -55,6 +56,14 @@ export const SessionTimer = ({ session, onClose, onLeave, currentUserId }: Sessi
   
   // Generate the call ID for this session using the groupId
   const callId = `session-${session.groupId}`;
+
+  // Start client-side speech recognition while session is active
+  useSessionTranscription({
+    sessionId: session.id,
+    enabled: Boolean(session.startedAt && !session.endedAt),
+    lang: navigator.language || "en-US",
+    flushIntervalMs: 10000,
+  });
 
   // Handle call state changes from AudioCall component
   const handleCallStateChange = (state: { isInCall: boolean; isMuted: boolean }) => {
