@@ -33,7 +33,6 @@ const SessionCard = ({
   useEffect(() => {
     let ignore = false;
     async function fetchSummary() {
-      if (!session.endedAt) return;
       setLoadingSummary(true);
       try {
         const res = await fetch(`${import.meta.env.VITE_API_URL}/api/sessions/${session.id}/summary`, {
@@ -57,15 +56,8 @@ const SessionCard = ({
   }, [session.id, session.endedAt]);
   
   const refreshSummary = async () => {
-    if (!session.endedAt) return;
     setLoadingSummary(true);
     try {
-      // First trigger regeneration on the server
-      await fetch(`${import.meta.env.VITE_API_URL}/api/sessions/${session.id}/summary/regenerate`, {
-        method: "POST",
-        credentials: "include",
-      });
-      // Then fetch the latest status and content
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/sessions/${session.id}/summary`, {
         credentials: "include",
       });
@@ -81,9 +73,9 @@ const SessionCard = ({
     }
   };
 
-  // Auto-regenerate on dialog open if summary is not yet completed
+  // Auto-refresh on dialog open if summary is not yet completed
   useEffect(() => {
-    if (isSummaryOpen && session.endedAt && status !== "completed" && !loadingSummary) {
+    if (isSummaryOpen && status !== "completed" && !loadingSummary) {
       void refreshSummary();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -178,7 +170,7 @@ const SessionCard = ({
             )}
           </div>
         </div>
-        {session.endedAt && (
+        {(session.endedAt || status || transcript) && (
           <div className="mt-4">
             <Dialog open={isSummaryOpen} onOpenChange={setIsSummaryOpen}>
               <DialogTrigger asChild>

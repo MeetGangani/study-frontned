@@ -21,6 +21,7 @@ import {
   initializeVideoClient,
   setupCallEventListeners,
 } from "./StreamClient";
+import { useMixedAudioRecorder } from "@/hooks/useMixedAudioRecorder";
 
 interface AudioCallProps {
   callId: string;
@@ -208,37 +209,71 @@ const CallContent = memo(
     const [isMuted, setIsMuted] = useState(false);
     const [activeAudioStream, setActiveAudioStream] =
       useState<MediaStream | null>(null);
+    const audioContextRef = useRef<AudioContext | null>(null);
+    const destinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
+    const sourcesRef = useRef<Map<string, MediaStreamAudioSourceNode>>(new Map());
+    const mixedStreamRef = useRef<MediaStream | null>(null);
+    const { isRecording, duration, audioUrl, start, stop } = useMixedAudioRecorder();
 
-    // Handle audio playback for remote participants
+    // Web Audio mixer: combine all remote participant audio into one mixed stream
     useEffect(() => {
-      const audioElement = document.createElement("audio");
-      audioElement.autoplay = true;
-      audioElement.style.display = "none"; // Hidden audio element
-      document.body.appendChild(audioElement);
+      const ensureContext = () => {
+        if (!audioContextRef.current) {
+          audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        }
+        if (!destinationRef.current) {
+          destinationRef.current = audioContextRef.current.createMediaStreamDestination();
+        }
+      };
 
-      const participantWithAudio = remoteParticipants?.find(
-        (p) => p.audioStream
-      );
-      if (participantWithAudio?.audioStream) {
-        console.log(
-          `Playing audio stream for participant ${participantWithAudio.userId}`
-        );
-        audioElement.srcObject = participantWithAudio.audioStream;
-        audioElement
-          .play()
-          .then(() => console.log("Audio playback started successfully"))
-          .catch((err) => console.error("Audio playback error:", err));
-        setActiveAudioStream(participantWithAudio.audioStream);
-      } else {
-        console.log("No remote participant with audio stream found");
-      }
+      ensureContext();
+      const ctx = audioContextRef.current!;
+      const dest = destinationRef.current!;
+
+      // Add or update sources for each remote participant audioStream
+      (remoteParticipants || []).forEach((p) => {
+        const key = p.userId;
+        const stream = p.audioStream as MediaStream | undefined;
+        if (!stream) return;
+        if (!sourcesRef.current.has(key)) {
+          const src = ctx.createMediaStreamSource(stream);
+          src.connect(dest);
+          sourcesRef.current.set(key, src);
+        }
+      });
+
+      // Remove sources for participants no longer present or without audio
+      const currentIds = new Set((remoteParticipants || []).map((p) => p.userId));
+      Array.from(sourcesRef.current.keys()).forEach((id) => {
+        if (!currentIds.has(id)) {
+          const src = sourcesRef.current.get(id)!;
+          try { src.disconnect(); } catch {}
+          sourcesRef.current.delete(id);
+        }
+      });
+
+      // Expose mixed stream and also play it locally to ensure autoplay policies allow capture
+      mixedStreamRef.current = dest.stream;
+      setActiveAudioStream(dest.stream);
 
       return () => {
-        audioElement.srcObject = null;
-        audioElement.remove();
-        console.log("Audio element cleaned up");
+        // do not close context here to avoid pops on quick re-renders
       };
     }, [remoteParticipants]);
+
+    const handleStartRecording = useCallback(async () => {
+      if (mixedStreamRef.current) {
+        await start(mixedStreamRef.current, "audio/webm");
+        toast.success("Started mixed recording");
+      } else {
+        toast.error("No mixed audio available");
+      }
+    }, [start]);
+
+    const handleStopRecording = useCallback(() => {
+      stop();
+      toast.success("Stopped mixed recording");
+    }, [stop]);
 
     // Enhanced debugging for audio state
     useEffect(() => {
@@ -318,6 +353,16 @@ const CallContent = memo(
             </span>
           </div>
           <div className="flex items-center space-x-2">
+            <button
+              onClick={isRecording ? handleStopRecording : handleStartRecording}
+              className={`p-1.5 rounded-full ${
+                theme === "dark"
+                  ? "bg-gray-700 text-white hover:bg-gray-600"
+                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+              }`}
+            >
+              {isRecording ? "Stop Rec" : "Rec"}
+            </button>
             <button
               onClick={toggleMute}
               className={`p-1.5 rounded-full ${
@@ -483,10 +528,16 @@ const CallContent = memo(
                   theme === "dark" ? "text-gray-400" : "text-gray-500"
                 }`}
               >
-                Voice activity detected
+                {isRecording ? `Recording ${duration}s` : "Voice activity detected"}
               </span>
             </div>
             <AudioVisualizer audioStream={activeAudioStream} theme={theme} />
+          </div>
+        )}
+
+        {audioUrl && (
+          <div className="px-2 pb-2">
+            <audio controls src={audioUrl} className="w-full" />
           </div>
         )}
       </div>
