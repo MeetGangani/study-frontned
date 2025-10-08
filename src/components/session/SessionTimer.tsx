@@ -85,6 +85,19 @@ export const SessionTimer = ({ session, onClose, onLeave, currentUserId }: Sessi
     return () => window.removeEventListener('resize', handleWindowResize);
   }, [handleWindowResize]);
 
+  // Expose current sessionId globally for AudioCall upload inference
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).__currentSessionId = session.id;
+    return () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((window as any).__currentSessionId === session.id) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (window as any).__currentSessionId = null;
+      }
+    };
+  }, [session.id]);
+
   useEffect(() => {
     if (!session.startedAt) return;
     

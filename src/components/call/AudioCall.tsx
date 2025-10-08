@@ -213,7 +213,9 @@ const CallContent = memo(
     const destinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
     const sourcesRef = useRef<Map<string, MediaStreamAudioSourceNode>>(new Map());
     const mixedStreamRef = useRef<MediaStream | null>(null);
-    const { isRecording, duration, audioUrl, start, stop } = useMixedAudioRecorder();
+    const { isRecording, duration, audioUrl, audioBlob, start, stop } = useMixedAudioRecorder();
+    const apiBaseRef = useRef<string>(import.meta.env.VITE_API_URL);
+    const sessionIdRef = useRef<string | null>(null);
 
     // Web Audio mixer: combine all remote participant audio into one mixed stream
     useEffect(() => {
@@ -270,10 +272,34 @@ const CallContent = memo(
       }
     }, [start]);
 
-    const handleStopRecording = useCallback(() => {
+    const handleStopRecording = useCallback(async () => {
       stop();
       toast.success("Stopped mixed recording");
-    }, [stop]);
+      // Upload to backend diarization endpoint if we have session context
+      try {
+        // Attempt to infer sessionId from callId pattern: session-<groupId> doesn't include sessionId.
+        // If SessionTimer sets window.__currentSessionId, use it.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const win: any = window as any;
+        const inferredSessionId = win.__currentSessionId || null;
+        sessionIdRef.current = inferredSessionId;
+        if (!inferredSessionId || !audioBlob) return;
+        const res = await fetch(`${apiBaseRef.current}/api/sessions/${inferredSessionId}/audio`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": audioBlob.type || "audio/webm" },
+          body: audioBlob,
+        });
+        if (!res.ok) {
+          console.error("Audio upload failed", await res.text().catch(() => ""));
+          toast.error("Failed to upload audio for diarization");
+        } else {
+          toast.success("Uploaded audio for transcript (speaker-labeled)");
+        }
+      } catch (e) {
+        console.error("Upload mixed audio error", e);
+      }
+    }, [stop, audioBlob]);
 
     // Enhanced debugging for audio state
     useEffect(() => {
