@@ -40,6 +40,8 @@ import { format, isToday, isYesterday } from "date-fns";
 import EmojiPicker, { EmojiStyle } from "emoji-picker-react";
 import { toast } from "sonner";
 import AudioCall from "../call/AudioCall";
+import VideoCall from "../call/VideoCall";
+import { StreamVideoProvider } from "../call/StreamVideoProvider";
 import FileMessage from "./FIleMessage";
 import { MessageContent } from "./Message";
 
@@ -49,6 +51,7 @@ interface ActiveCall {
   initiatedBy: string;
   participants: string[];
   startedAt: string;
+  mediaType?: 'audio' | 'video';
 }
 
 interface CallParticipant {
@@ -68,6 +71,7 @@ const ChatRoom = ({ groupId }: { groupId: string }) => {
     []
   );
   const [showStreamCall, setShowStreamCall] = useState(false);
+  const [showVideoCall, setShowVideoCall] = useState(false);
   const [activeGroupCall, setActiveGroupCall] = useState<ActiveCall | null>(
     null
   );
@@ -249,6 +253,7 @@ const ChatRoom = ({ groupId }: { groupId: string }) => {
       callId: callId,
       initiatedBy: userId,
       initiatorName: user.name,
+      mediaType: 'audio',
       // Include participant details for others to see
       participantDetails: [
         {
@@ -269,6 +274,7 @@ const ChatRoom = ({ groupId }: { groupId: string }) => {
 
     // Show the call UI for the creator
     setShowStreamCall(true);
+    setShowVideoCall(false);
     setIsInCall(true);
 
     toast.success("Starting group call as the only participant...");
@@ -282,6 +288,66 @@ const ChatRoom = ({ groupId }: { groupId: string }) => {
     });
   };
 
+  const startNewVideoCall = () => {
+    if (!socket || !userId || !user?.name) {
+      toast.error("Unable to start call. Please try again.");
+      return;
+    }
+
+    if (activeGroupCall) {
+      toast.info("A call is already in progress. You can join it instead.");
+      return;
+    }
+
+    const callId = `group-${groupId}`;
+    console.log(
+      `Starting new VIDEO call with ID: ${callId} for group ${groupId} with creator ${user.name}`
+    );
+
+    setCallParticipants([
+      {
+        id: userId,
+        socketId: socket.id,
+        name: user.name,
+      },
+    ]);
+
+    socket.emit("call_started", {
+      groupId,
+      callId: callId,
+      initiatedBy: userId,
+      initiatorName: user.name,
+      mediaType: 'video',
+      participantDetails: [
+        {
+          id: userId,
+          socketId: socket.id,
+          name: user.name,
+        },
+      ],
+    });
+
+    setActiveGroupCall({
+      callId: callId,
+      initiatedBy: userId,
+      participants: [userId],
+      startedAt: new Date().toISOString(),
+      mediaType: 'video',
+    });
+
+    setShowStreamCall(false);
+    setShowVideoCall(true);
+    setIsInCall(true);
+
+    toast.success("Starting group VIDEO call...");
+    socket.emit("notification", {
+      groupId,
+      message: `${user.name} started a video call`,
+      userId,
+      userName: user.name,
+    });
+  };
+
   // Update joinOngoingCall to send a notification
   const joinOngoingCall = () => {
     if (!activeGroupCall || !socket || !userId || !user?.name) {
@@ -289,7 +355,9 @@ const ChatRoom = ({ groupId }: { groupId: string }) => {
       return;
     }
 
-    setShowStreamCall(true);
+    const isVideo = activeGroupCall.mediaType === 'video';
+    setShowStreamCall(!isVideo);
+    setShowVideoCall(Boolean(isVideo));
     console.log(`Joining ongoing call with ID: ${activeGroupCall.callId}`);
     console.log(`Current participants: ${activeGroupCall.participants.length}`);
 
@@ -310,6 +378,7 @@ const ChatRoom = ({ groupId }: { groupId: string }) => {
 
     // Always hide the call UI first
     setShowStreamCall(false);
+    setShowVideoCall(false);
 
     // Always notify the server that this participant has left
     socket.emit("call_participant_left", {
@@ -409,9 +478,11 @@ const ChatRoom = ({ groupId }: { groupId: string }) => {
           setCallParticipants(callData.participantDetails);
         }
 
-        // If user is already a participant, show the call UI
+        // If user is already a participant, show the appropriate call UI
         if (callData.participants.includes(userId)) {
-          setShowStreamCall(true);
+          const isVideo = callData.mediaType === 'video';
+          setShowStreamCall(!isVideo);
+          setShowVideoCall(Boolean(isVideo));
           setIsInCall(true);
         } else {
           // Show notification that there's an active call they can join
@@ -420,7 +491,11 @@ const ChatRoom = ({ groupId }: { groupId: string }) => {
             {
               action: {
                 label: "Join",
-                onClick: () => setShowStreamCall(true),
+                onClick: () => {
+                  const isVideo = callData.mediaType === 'video';
+                  setShowStreamCall(!isVideo);
+                  setShowVideoCall(Boolean(isVideo));
+                },
               },
             }
           );
@@ -904,7 +979,7 @@ const ChatRoom = ({ groupId }: { groupId: string }) => {
           </div>
         </div>
         <div className="flex items-center space-x-3">
-          {!showStreamCall ? (
+          {!(showStreamCall || showVideoCall) ? (
             <>
               {activeGroupCall ? (
                 <Button
@@ -914,7 +989,7 @@ const ChatRoom = ({ groupId }: { groupId: string }) => {
                 >
                   <Users className="w-4 h-4 mr-2" />
                   <span>
-                    Join Group Call ({activeGroupCall.participants.length})
+                    Join {activeGroupCall.mediaType === 'video' ? 'Video ' : ''}Call ({activeGroupCall.participants.length})
                   </span>
                 </Button>
               ) : (
@@ -925,6 +1000,16 @@ const ChatRoom = ({ groupId }: { groupId: string }) => {
                 >
                   <PhoneCall className="w-4 h-4 mr-2 text-green-500" />
                   <span>Start Call</span>
+                </Button>
+              )}
+              {!activeGroupCall && (
+                <Button
+                  variant="outline"
+                  onClick={startNewVideoCall}
+                  className="bg-white hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700"
+                >
+                  <PhoneCall className="w-4 h-4 mr-2 text-blue-500" />
+                  <span>Start Video</span>
                 </Button>
               )}
             </>
@@ -940,22 +1025,36 @@ const ChatRoom = ({ groupId }: { groupId: string }) => {
       </div>
 
       {/* Stream.io Call */}
-      {showStreamCall && (
-        <div className="bg-white dark:bg-gray-800 border-b dark:border-gray-700">
-          <AudioCall
-            callId={`group-${groupId}`}
-            onCallStateChange={handleStreamCallStateChange}
-            className="border-b dark:border-gray-700"
-            autoJoin={true}
-            participantNames={callParticipants.reduce(
-              (acc, participant) => ({
-                ...acc,
-                [participant.id]: participant.name,
-              }),
-              {}
-            )}
-          />
-        </div>
+      {(showStreamCall || showVideoCall) && (
+        <StreamVideoProvider>
+          {showStreamCall && (
+            <div className="bg-white dark:bg-gray-800 border-b dark:border-gray-700">
+              <AudioCall
+                callId={`group-${groupId}`}
+                onCallStateChange={handleStreamCallStateChange}
+                className="border-b dark:border-gray-700"
+                autoJoin={true}
+                participantNames={callParticipants.reduce(
+                  (acc, participant) => ({
+                    ...acc,
+                    [participant.id]: participant.name,
+                  }),
+                  {}
+                )}
+              />
+            </div>
+          )}
+          {showVideoCall && (
+            <div className="bg-white dark:bg-gray-800 border-b dark:border-gray-700">
+              <VideoCall
+                callId={`group-${groupId}`}
+                onCallStateChange={({ isInCall }) => setIsInCall(isInCall)}
+                className="border-b dark:border-gray-700"
+                autoJoin={true}
+              />
+            </div>
+          )}
+        </StreamVideoProvider>
       )}
 
       {/* Messages */}

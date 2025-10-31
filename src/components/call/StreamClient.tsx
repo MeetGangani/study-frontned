@@ -24,6 +24,7 @@ interface TokenResponse {
  */
 export const initializeVideoClient = async (user: any, forceNew = false): Promise<StreamVideoClient> => {
   if (!user) throw new Error('User not found');
+  if (!user.id) throw new Error('User id is missing');
   if (!API_KEY) throw new Error('Stream API key not configured');
 
   // Return cached client if available and not forcing a new one
@@ -55,48 +56,25 @@ export const initializeVideoClient = async (user: any, forceNew = false): Promis
       }
     }
 
-    // Create client with appropriate options
+    // Create client (the SDK supports passing user + token to constructor)
     const client = new StreamVideoClient({
       apiKey: API_KEY,
-      token,
-      tokenProvider: async () => {
-        const response = await getTokenWithRetry(user);
-        return response.token;
-      },
       user: {
         id: user.id,
         name: user.name || 'User',
         image: user.picture || 'https://example.com/avatar.png',
       },
-      options: {
-        logLevel: 'debug', // Set to 'info' in production
-      }
+      token,
+      tokenProvider: async () => {
+        const response = await getTokenWithRetry(user);
+        return response.token;
+      },
+      options: { logLevel: 'debug' }
     });
 
-    // Connection with timeout and better error reporting
-    try {
-      console.log('Attempting to connect user:', user.id);
-      
-      await Promise.race([
-        client.connectUser({
-          id: user.id,
-          name: user.name || 'User',
-          image: user.picture || 'https://example.com/avatar.png',
-        }, token),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Connection timeout')), 15000)
-        )
-      ]);
-      
-      console.log('Client connected successfully');
-      clientCache[user.id] = client;
-      return client;
-    } catch (error) {
-      console.error('Error connecting client:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown connection error';
-      console.log('Connection error details:', errorMessage);
-      throw new Error(`Failed to connect: ${errorMessage}`);
-    }
+    // Store and return
+    clientCache[user.id] = client;
+    return client;
   } catch (error) {
     console.error('Client initialization failed:', error);
     throw error;
