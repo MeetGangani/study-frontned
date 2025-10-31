@@ -1,5 +1,5 @@
 import Chat from "@/components/chat/Chat";
-import { Dock, DockIcon } from "@/components/magicui/dock";
+// removed unused Dock imports
 import Member from "@/components/member";
 import Navbar from "@/components/Nav_bar";
 import { useAuth } from "@/components/providers/auth";
@@ -28,27 +28,22 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSession } from "@/contexts/SessionContext";
 import { deleteGroup, getGroupdetails, leaveGroup } from "@/lib/group-api";
-import { cn } from "@/lib/utils";
+// removed unused cn import
 import { GroupData } from "@/type";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Calendar,
   MessageSquare,
-  PenTool,
+  // removed unused PenTool
   Users,
-  Zap,
   Star,
   TrendingUp,
   Clock3,
   Palette,
-  Lightbulb,
-  MoreVertical,
-  ExternalLink,
-  Share2,
-  Bookmark,
-  Settings
+  Lightbulb
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 import { useNavigate, useParams } from "react-router";
 import { AIChatButton } from "@/components/chat/AIChatButton";
 import { AIChatDialog } from "@/components/chat/AIChatDialog";
@@ -169,9 +164,7 @@ export default function StudyGroupPage() {
                           </div>
                         </div>
                       </div>
-                      <Button variant="ghost" size="icon">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
+                      {/* removed non-functional menu button */}
                     </div>
                   )}
                 </CardHeader>
@@ -180,20 +173,7 @@ export default function StudyGroupPage() {
                     <p className="text-muted-foreground mb-4">
                       {groupData.description || "Welcome to our study group! Let's learn together."}
                     </p>
-                    <div className="flex flex-wrap gap-2">
-                      <Button size="sm">
-                        <Zap className="h-4 w-4 mr-2" />
-                        Quick Session
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <Share2 className="h-4 w-4 mr-2" />
-                        Share Group
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <Bookmark className="h-4 w-4 mr-2" />
-                        Bookmark
-                      </Button>
-                    </div>
+                    {/* removed non-functional quick action buttons */}
                   </CardContent>
                 )}
               </Card>
@@ -243,7 +223,7 @@ export default function StudyGroupPage() {
             className="mb-8"
           >
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <Zap className="h-5 w-5 text-primary" />
+              {/* kept simple title without extra non-functional CTA */}
               Quick Actions
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -301,15 +281,7 @@ export default function StudyGroupPage() {
                       {quickActions.find(a => a.id === activeTab)?.description || "Main dashboard"}
                     </CardDescription>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm">
-                      <ExternalLink className="h-4 w-4 mr-2" />
-                      Open in New Tab
-                    </Button>
-                    <Button variant="ghost" size="icon">
-                      <Settings className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  {/* removed non-functional header actions */}
                 </div>
               </CardHeader>
               <CardContent className="p-6">
@@ -371,10 +343,7 @@ export default function StudyGroupPage() {
                       <Calendar className="h-4 w-4 mr-2" />
                       View All Sessions
                     </Button>
-                    <Button size="sm">
-                      <Zap className="h-4 w-4 mr-2" />
-                      Start Study Session
-                    </Button>
+                    {/* removed non-functional start session button */}
                   </div>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
