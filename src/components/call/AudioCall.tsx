@@ -644,24 +644,52 @@ function AudioCall({
       console.log("Leaving call:", callId);
 
       // First notify the parent component that we're leaving the call
-      // This is important to do BEFORE we attempt to leave, so socket notifications happen immediately
       setIsInCall(false);
       onCallStateChange?.({ isInCall: false, isMuted });
 
+      // Proactively disable microphone (and camera if any) to release devices
+      try {
+        await callRef.current.microphone?.disable();
+      } catch (e) {
+        console.warn("Failed to disable microphone before leaving:", e);
+      }
+      try {
+        await callRef.current.camera?.disable();
+      } catch {}
+
+      // Extra safety: attempt to stop any tracks held by the SDK's mic stream
+      try {
+        // @ts-expect-error: access potential internal media stream reference
+        const micStream: MediaStream | undefined = callRef.current.microphone?.mediaStream;
+        micStream?.getTracks().forEach((t) => {
+          try { t.stop(); } catch {}
+        });
+      } catch {}
+
       // Then leave the call through Stream's SDK
       await callRef.current.leave();
+
+      // After leaving, also disconnect the client to ensure all devices are released
+      if (user?.id) {
+        try {
+          await disconnectClient(user.id);
+        } catch (e) {
+          console.warn("Failed to disconnect client after leave:", e);
+        }
+      }
+
+      // Clear refs
+      callRef.current = null;
+      clientRef.current = null;
 
       toast.success("Left call successfully");
     } catch (error) {
       console.error("Error leaving call:", error);
       toast.error("Error leaving call");
 
-      // If there was an error leaving, we should still consider ourselves left
-      // because the parent component already thinks we left
       setIsInCall(false);
       onCallStateChange?.({ isInCall: false, isMuted });
     } finally {
-      // Make sure UI reflects that we're not in the call
       setIsInCall(false);
     }
   }, [callId, isMuted, onCallStateChange]);
@@ -747,6 +775,16 @@ function AudioCall({
             toast.info(`Call ended by ${endedByName}`);
             setIsInCall(false);
             onCallStateChange?.({ isInCall: false, isMuted });
+            try { newCall.microphone?.disable(); } catch {}
+            try { newCall.camera?.disable(); } catch {}
+            // Also disconnect client to stop any background activity
+            if (user?.id) {
+              disconnectClient(user.id).catch(() => {});
+            }
+            // Clear local refs/state
+            try { callRef.current = null; } catch {}
+            setCallInstance(null);
+            setClient(null);
           }
         });
 
@@ -995,6 +1033,13 @@ function AudioCall({
         // Then leave the call if we're in one
         if (callRef.current && isInCall) {
           try {
+            try { await callRef.current.microphone?.disable(); } catch {}
+            try { await callRef.current.camera?.disable(); } catch {}
+            try {
+              // @ts-expect-error: access potential internal media stream reference
+              const micStream: MediaStream | undefined = callRef.current.microphone?.mediaStream;
+              micStream?.getTracks().forEach((t) => { try { t.stop(); } catch {} });
+            } catch {}
             await callRef.current.leave();
             console.log("Successfully left audio call during cleanup");
           } catch (error) {
@@ -1003,7 +1048,7 @@ function AudioCall({
         }
 
         // Finally disconnect the client
-        if (user && user.id) {
+      if (user && user.id) {
           try {
             await disconnectClient(user.id);
             console.log(
@@ -1016,6 +1061,12 @@ function AudioCall({
             );
           }
         }
+
+        // Clear local refs/state
+        callRef.current = null;
+        clientRef.current = null;
+        setCallInstance(null);
+        setClient(null);
       };
 
       // Execute cleanup
@@ -1194,7 +1245,7 @@ function AudioCall({
 
   // Render based on selected mode
   const renderByMode = useCallback(() => {
-    if (!client || !callInstance) {
+    if (!client || !callInstance || !isInCall) {
       return (
         <div className="flex justify-center items-center h-full">
           <div className="text-center">
