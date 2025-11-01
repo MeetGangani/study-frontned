@@ -19,7 +19,6 @@ const Navbar = () => {
             </span>
           </Link>
         </div>
-
         {/* Desktop Navigation */}
         {/* <div className="hidden justify-center gap-11 md:flex">
           {navLinks.map(({ href, label }) => (

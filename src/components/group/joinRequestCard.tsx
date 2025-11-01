@@ -43,6 +43,7 @@ export function JoinRequestCard({ id, name, avatar, email }: JoinRequestCardProp
               userId: email || "default",
             }}
             size={48}
+            //@ts-ignore
             className="shrink-0"
           />
           <div className="text-center sm:text-left">

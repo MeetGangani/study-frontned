@@ -33,48 +33,6 @@ interface AudioCallProps {
   participantNames?: { [key: string]: string };
 }
 
-// // Create a separate component for participants to prevent re-renders
-// const ParticipantItem = memo(
-//   ({ participant, currentUserId, participantNames }: {
-//     participant: any;
-//     currentUserId: string;
-//     participantNames?: { [key: string]: string };
-//   }) => {
-//     const isCurrentUser = participant.userId === currentUserId;
-
-//     // Improved name display logic:
-//     // 1. Try participant names mapping first (from Chat component)
-//     // 2. Fall back to participant.user?.name from Stream
-//     // 3. Try to show a more human-readable ID if all else fails
-//     const displayName =
-//       participantNames?.[participant.userId] ||
-//       participant.user?.name ||
-//       (participant.userId ? `User-${participant.userId.substring(0, 6)}` : "Unknown");
-
-//     return (
-//       <div className="flex items-center gap-2 p-2 bg-gray-800/50 rounded-md">
-//         {participant.user?.image ? (
-//           <img
-//             src={participant.user.image}
-//             alt={displayName}
-//             className="w-6 h-6 rounded-full"
-//           />
-//         ) : (
-//           <div className="w-6 h-6 rounded-full bg-gray-600 flex items-center justify-center text-xs text-white">
-//             {displayName.charAt(0).toUpperCase()}
-//           </div>
-//         )}
-//         <span className="text-sm text-white truncate">
-//           {displayName} {isCurrentUser ? "(You)" : ""}
-//         </span>
-//         {participant.isSpeaking && (
-//           <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-//         )}
-//         {participant.isMuted && <MicOff size={12} className="text-red-400" />}
-//       </div>
-//     );
-//   }
-// );
 
 // Separate component for the audio visualizer
 const AudioVisualizer = memo(

@@ -45,10 +45,10 @@ import {
 import React, { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useNavigate, useParams } from "react-router";
-import { AIChatButton } from "@/components/chat/AIChatButton";
 import { AIChatDialog } from "@/components/chat/AIChatDialog";
 import { Whiteboard } from "@/components/whiteboard";
 import Diagram from "@/components/Diagram";
+import { AIChatButton } from "@/components/chat/AIChatButton";
 
 const quickActions = [
   { id: "members", icon: Users, label: "Team", color: "bg-blue-500", description: "View all members" },
